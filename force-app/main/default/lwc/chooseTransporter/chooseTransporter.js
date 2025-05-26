@@ -10,8 +10,8 @@ export default class ChooseTransporter extends LightningElement {
     hasPermission = hasPermission; // Stocke la valeur importée pour simplifier l'accès dans le template
 
     options = [
-        { label: 'Option la plus rapide', value: 'fastest' },
-        { label: 'Option la moins chère', value: 'cheapest' }
+        { label: 'Fastest option', value: 'fastest' },
+        { label: 'Cheapest option', value: 'cheapest' }
     ]; // Choix à afficher dans le radio group
 
     handleChange(event) { // à la sélection d'un option radio
@@ -20,21 +20,21 @@ export default class ChooseTransporter extends LightningElement {
 
     handleSubmit() { // au clic
         if (!this.hasPermission) {
-            alert("Vous n'avez pas la permission d'envoyer une commande.");
+            alert("You do not have permission to submit an order.");
             return;
         } // Méthode déclenchée au clic sur le bouton "Envoyer la commande"
         if (!this.selectedOption) {
-            alert("Veuillez sélectionner une option de livraison.");
+            alert("Please select a delivery option.");
             return;
         }
         // Appel de la méthode Apex saveTransporterChoice ; logique d’envoi ou de sauvegarde du transporteur
         saveTransporterChoice({ orderId: this.recordId, choice: this.selectedOption })
         .then(() => {
-            alert("Commande envoyée avec succès !");
+            alert("Order submitted successfully!");
         })
         .catch(error => {
             console.error(error);
-            alert("Erreur lors de l'envoi de la commande.");
+            alert("Error while submitting the order.");
         });
     }
 }
