@@ -12,14 +12,3 @@ public with sharing class AccountSelector {
         return accounts.isEmpty() ? null : accounts[0]; // si la liste est vide, on retourne null. Sinon, on retourne le premier (et seul) élément de la liste.
     }
 }
-
-
-// public with sharing class AccountSelector {
-//     public static Account getAccountById(Id accountId) {
-//         return [
-//                 SELECT Id, Name, Type, Industry, BillingCity, BillingCountry, Phone, Website
-//                 FROM Account
-//                 WHERE Id = :accountId
-//         ];
-//     }
-// }
