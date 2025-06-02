@@ -11,6 +11,23 @@
                 onchange={handleChange}
                 type="radio">
             </lightning-radio-group>
+
+            <template if:true={selectedOption}>
+                <p class="slds-text-body_regular">
+                    Selected transporter: {computedTransporter}
+                </p>
+            </template>
+
+            <template if:true={showComboBox}>
+                <lightning-combobox
+                    name="otherTransporter"
+                    label="Choose one transporter"
+                    options={otherTransporterOptions}
+                    value={selectedComboValue}
+                    onchange={handleComboChange}>
+                </lightning-combobox>
+            </template>
+
             <lightning-button
                 class="slds-m-top_medium"
                 variant="brand"
@@ -19,6 +36,7 @@
             </lightning-button>
         </div>
     </template>
+    
     <template if:false={hasPermission}>
         <p class="slds-text-color_error">You do not have permission to submit an order.</p>
     </template>
