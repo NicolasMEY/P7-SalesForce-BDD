@@ -9,12 +9,15 @@ public class OrderTransporterController {
         }
 
         // Appel de la class imbiquée TransporterOption de la class TransporterSelector ==> pour récupérer les options de transporteurs
-        List<TransporterSelector.TransporterOption> options = TransporterSelector.getTransportOptions(ord.AccountId);
+        List<TransporterSelector.TransporterOption> options = TransporterSelector.getTransportOptions(ord.Id);
+        // getTransportOptions(ord.AccountId);
         TransporterSelector.TransporterOption selectedOption; // Je déclare une variable selectedOption de type TransporterOption pour stocker l’option choisie par l’utilisateur (si on la trouve dans la liste).
         
         // On boucle sur les options disponibles puis on compare le champ option.optionName avec la valeur envoyée par le client (choice). Une fois la correspondance trouvée, on la stocke dans selectedOption et on sort de la boucle.
         for (TransporterSelector.TransporterOption option : options) {
-            if (option.optionName == choice) { 
+            // if (option.optionName == choice) { 
+            // if (option.transporterId == choice) { 
+            if (option.value == choice) { 
                 selectedOption = option;
                 break;
             }
