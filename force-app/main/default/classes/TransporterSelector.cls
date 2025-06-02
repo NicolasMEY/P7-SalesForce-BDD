@@ -1,119 +1,144 @@
+// Ce code sert à sélectionner un transporteur pour une commande (Order) en fonction du pays de livraison et du type de client. Il retourne une liste de choix de transporteurs avec des infos comme : leur nom, le prix de livraison,le délai de livraison.
+
 public with sharing class TransporterSelector {
 
-    // Cette class interne sert à définir une structure d'objet qui sera utilisée pour représenter les options de transport.
+    // "petite classe" qui sert à formater les données d’un transporteur.
     public class TransporterOption {
-        @AuraEnabled public String optionName;
+        @AuraEnabled public String label;
+        @AuraEnabled public String value;
         @AuraEnabled public Id transporterId;
         @AuraEnabled public String transporterName;
         @AuraEnabled public Decimal price;
         @AuraEnabled public Integer deliveryDays;
 
-        public TransporterOption(String optionName, TransporterRate__c rate) {
-            this.optionName = optionName;
+        public TransporterOption(String value, TransporterRate__c rate) {
+            this.value = value;
+            this.label = (rate.Transporter__r != null)
+                ? rate.Transporter__r.Name + ' - ' + rate.Delivery_Time__c + ' days - ' + rate.Delivery_Price__c + '€'
+                : 'Unknown Transporter';
             this.transporterId = rate.Transporter__c;
-            this.transporterName = rate.Transporter__r.Name; // accès au champ Name (standard) de l'objet lié Transporter
+            this.transporterName = (rate.Transporter__r != null) ? rate.Transporter__r.Name : null;
             this.price = rate.Delivery_Price__c;
-            this.deliveryDays = rate.Delivery_Time__c != null ? rate.Delivery_Time__c.intValue() : null;
+            this.deliveryDays = (rate.Delivery_Time__c != null) ? rate.Delivery_Time__c.intValue() : null;
         }
     }
 
     @AuraEnabled(cacheable=true)
-    public static List<TransporterOption> getTransportOptions(Id accountId) { // cette méthode ==> afficher dynamiquement les choix de transport disponibles à l’utilisateur
+    public static List<TransporterOption> getTransportOptions(Id orderId) {
+        List<TransporterOption> options = new List<TransporterOption>();
 
-        if (accountId == null) {
-            return new List<TransporterOption>();
-        }
-        // Récupérer le pays de facturation du compte (pour filtrer)
-        Account acc = [SELECT BillingCountry FROM Account WHERE Id = :accountId LIMIT 1];
-        if (acc == null || String.isBlank(acc.BillingCountry)) {
-            return new List<TransporterOption>();
-        }
-        String billingCountry = acc.BillingCountry;
+        if (orderId == null) return options;
 
-        // Récupère tous les tarifs des transporteurs fltrés par pays et trie les résultats par prix croissant
+        Order ord;
+        try {
+            ord = [
+                SELECT ShippingCountry, Account.Type_of_client__c
+                FROM Order
+                WHERE Id = :orderId
+                LIMIT 1
+            ];
+        } catch (Exception e) {
+            return options;
+        }
+
+        if (ord == null || String.isBlank(ord.ShippingCountry) || String.isBlank(ord.Account?.Type_of_client__c)) {
+            System.debug('Données manquantes - ShippingCountry: ' + ord?.ShippingCountry + ', ClientType: ' + ord?.Account?.Type_of_client__c);
+
+            return options;
+        }
+
+        String shippingCountry = ord.ShippingCountry;
+        String clientType = ord.Account.Type_of_client__c;
+
+        // Table de correspondance anglais ==> français
+        Map<String, String> countryMap = new Map<String, String>{
+        'Belgium' => 'Belgique',
+        'France' => 'France',
+        'Switzerland' => 'Suisse',
+        'Luxembourg' => 'Luxembourg'
+    };
+  // Remplacer la valeur anglaise par la valeur française attendue dans les données custom
+  String internalCountry = countryMap.get(shippingCountry);
+    if (internalCountry ==null) {
+        internalCountry = shippingCountry; // Garde la valeur originale si pas de correspondance
+    }
+
+
+        // On récupère tous les transporteurs disponibles pour ce pays et typeOfClient
         List<TransporterRate__c> rates = [
-            SELECT Id, Transporter__c, Transporter__r.Name, Delivery_Price__c, Delivery_Time__c
+            SELECT Id, Transporter__c, Transporter__r.Name,Transporter__r.Client_Type__c, Delivery_Price__c, Delivery_Time__c, Clients_Type__c, Country__c
             FROM TransporterRate__c
-            WHERE Country__c = :billingCountry
+            // WHERE Country__c = :shippingCountry
+            WHERE Country__c = :internalCountry
+            //   AND (Clients_Type__c = :clientType OR Clients_Type__c = 'Both')
+            //   AND (Clients_Type__c = :clientType OR Clients_Type__c = 'Both'
+            //   OR Clients_Type__c LIKE :('%' + clientType + '%'))
             ORDER BY Delivery_Price__c ASC
         ];
 
-        // Ces 2 variables vont contenir le tarif le moins cher et le plus rapide
+    // Filtrage par type de client (picklist multi-sélection)
+    List<TransporterRate__c> filteredRates = new List<TransporterRate__c>();
+    for (TransporterRate__c rate : rates) {
+        if (rate.Transporter__r != null && rate.Transporter__r.Client_Type__c != null) {
+            String transporterClientTypes = rate.Transporter__r.Client_Type__c;            
+            // Pour une picklist multi-sélection, les valeurs sont séparées par des points-virgules
+            List<String> clientTypesList = transporterClientTypes.split(';');
+            Boolean matchFound = false;
+            
+            for (String type : clientTypesList) {
+                if (type.trim().equalsIgnoreCase(clientType.trim())) {
+                    matchFound = true;
+                    break;
+                }
+            }
+            
+            if (matchFound) {
+                filteredRates.add(rate);
+                System.debug('✓ Transporteur retenu: ' + rate.Transporter__r.Name);
+            } else {
+                System.debug('✗ Transporteur exclu: ' + rate.Transporter__r.Name);
+            }
+        }
+    }
+
+        if (rates.isEmpty()) return options;
+
         TransporterRate__c cheapest = null;
         TransporterRate__c fastest = null;
 
+        // On boucle sur les tarifs et on compare prix et délais ==> cheapest / fastest
         for (TransporterRate__c rate : rates) {
-            // "Si on n'a pas encore de tarif moins cher, ou si ce tarif a un prix plus bas que le moins cher actuel, alors on met à jour cheapest."
             if (cheapest == null || (rate.Delivery_Price__c != null && rate.Delivery_Price__c < cheapest.Delivery_Price__c)) {
                 cheapest = rate;
             }
-            //  Si le temps de livraison actuel est inférieur au plus rapide enregistré, on met à jour.
             if (fastest == null || (rate.Delivery_Time__c != null && rate.Delivery_Time__c < fastest.Delivery_Time__c)) {
                 fastest = rate;
             }
         }
 
-        // On crée une liste d’options à retourner : l’option "cheapest", l’option "fastest", si elle est différente de la moins chère (pour éviter un doublon)
-        List<TransporterOption> options = new List<TransporterOption>();
-        if (cheapest != null) options.add(new TransporterOption('cheapest', cheapest));
-        if (fastest != null && fastest.Id != cheapest.Id) options.add(new TransporterOption('fastest', fastest));
+        // On retourne une liste d'objets TransporterOption
+        Set<Id> addedIds = new Set<Id>();
+
+        if (cheapest != null) {
+            options.add(new TransporterOption('cheapest', cheapest));
+            addedIds.add(cheapest.Id);
+        }
+
+        if (fastest != null && !addedIds.contains(fastest.Id)) {
+            options.add(new TransporterOption('fastest', fastest));
+            addedIds.add(fastest.Id);
+        }
+
+        // Ajout des autres transporteurs
+        // for (TransporterRate__c rate : rates) {
+            for (TransporterRate__c rate : filteredRates) {
+                if (!addedIds.contains(rate.Id)) {
+                // options.add(new TransporterOption(rate.Transporter__r != null ? rate.Transporter__r.Name : 'UnknownTransporter', rate));
+                options.add(new TransporterOption(rate.Id, rate));
+            }
+        }
+        System.debug('Options finales retournées: ' + options.size());
 
         return options;
     }
 }
-
-
-
-
-
-// public with sharing class TransporterSelector {
-//     public static Map<String, Object> getTransportOptions(String country, String clientType) {
-//         // 1) Récupérer les tarifs compatibles
-//         List<TransporterRate__c> allRates = [
-//             SELECT Id, Country__c, Delivery_Price__c, Delivery_Time__c,
-//                    Transporter__r.Client_Type__c
-//             FROM TransporterRate__c
-//             WHERE Country__c = :country
-//         ];
-
-//         List<TransporterRate__c> compatibleRates = new List<TransporterRate__c>();
-//         for (TransporterRate__c rate : allRates) {
-//             if (rate.Transporter__r.Client_Type__c == clientType || rate.Transporter__r.Client_Type__c == 'Tous') {
-//                 compatibleRates.add(rate);
-//             }
-//         }
-
-//         TransporterRate__c cheapest = null;
-//         TransporterRate__c fastest = null;
-//         Decimal minPrice = Decimal.valueOf(99999999);
-//         Integer minTime = 2147483647; // Valeur max d’un Integer 32 bits
-
-//         for (TransporterRate__c rate : compatibleRates) {
-//             if (rate.Delivery_Price__c != null && rate.Delivery_Price__c < minPrice) {
-//                 cheapest = rate;
-//                 minPrice = rate.Delivery_Price__c;
-//             }
-//             if (rate.Delivery_Time__c != null && rate.Delivery_Time__c.intValue() < minTime) {
-//                 fastest = rate;
-//                 minTime = rate.Delivery_Time__c.intValue();
-//             }
-//         }
-
-//         // 2) Récupérer les livraisons du même pays
-//         List<Delivery__c> deliveries = [
-//             SELECT Id, External_Transporter_ID__c, Country__c, Delivery_Price__c,
-//                    Delivery_Time__c, Transporter__c
-//             FROM Delivery__c
-//             WHERE Country__c = :country
-//         ];
-
-//         // 3) Retourner les résultats dans une Map simple
-//         Map<String, Object> results = new Map<String, Object>();
-//         results.put('cheapest', cheapest);
-//         results.put('fastest', fastest);
-//         results.put('compatibleRates', compatibleRates);
-//         results.put('deliveries', deliveries);
-
-//         return results;
-//     }
-// }
