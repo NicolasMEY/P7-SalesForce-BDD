@@ -1,6 +1,6 @@
 public class OrderTransporterController {
     @AuraEnabled // Appel depuis le LWC
-    public static String saveTransporterChoice(Id orderId, String choice) { // nom envoyé depuis le front-end ... je vais l'importer dans mon JS.... à retravailler
+    public static String saveTransporterChoice(Id orderId, String choice) { 
 
         // Récupérer la commande
         Order ord = [SELECT Id, AccountId, Transporter_Choice__c, Transporter__c FROM Order WHERE Id = :orderId LIMIT 1];
@@ -8,15 +8,12 @@ public class OrderTransporterController {
             throw new AuraHandledException('Commande sans compte lié.');
         }
 
-        // Appel de la class imbiquée TransporterOption de la class TransporterSelector ==> pour récupérer les options de transporteurs
+        // Appel de la class interne "TransporterOption" de la class TransporterSelector ==> pour récupérer les options de transporteurs
         List<TransporterSelector.TransporterOption> options = TransporterSelector.getTransportOptions(ord.Id);
-        // getTransportOptions(ord.AccountId);
         TransporterSelector.TransporterOption selectedOption; // Je déclare une variable selectedOption de type TransporterOption pour stocker l’option choisie par l’utilisateur (si on la trouve dans la liste).
         
         // On boucle sur les options disponibles puis on compare le champ option.optionName avec la valeur envoyée par le client (choice). Une fois la correspondance trouvée, on la stocke dans selectedOption et on sort de la boucle.
         for (TransporterSelector.TransporterOption option : options) {
-            // if (option.optionName == choice) { 
-            // if (option.transporterId == choice) { 
             if (option.value == choice) { 
                 selectedOption = option;
                 break;
