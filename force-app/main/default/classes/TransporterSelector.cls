@@ -1,8 +1,6 @@
-// Ce code sert à sélectionner un transporteur pour une commande (Order) en fonction du pays de livraison et du type de client. Il retourne une liste de choix de transporteurs avec des infos comme : leur nom, le prix de livraison,le délai de livraison.
-
 public with sharing class TransporterSelector {
 
-    // "petite classe" qui sert à formater les données d’un transporteur.
+    // "class interne" qui sert à formater les données d’un transporteur.
     public class TransporterOption {
         @AuraEnabled public String label;
         @AuraEnabled public String value;
@@ -63,16 +61,11 @@ public with sharing class TransporterSelector {
         internalCountry = shippingCountry; // Garde la valeur originale si pas de correspondance
     }
 
-
         // On récupère tous les transporteurs disponibles pour ce pays et typeOfClient
         List<TransporterRate__c> rates = [
             SELECT Id, Transporter__c, Transporter__r.Name,Transporter__r.Client_Type__c, Delivery_Price__c, Delivery_Time__c, Clients_Type__c, Country__c
             FROM TransporterRate__c
-            // WHERE Country__c = :shippingCountry
             WHERE Country__c = :internalCountry
-            //   AND (Clients_Type__c = :clientType OR Clients_Type__c = 'Both')
-            //   AND (Clients_Type__c = :clientType OR Clients_Type__c = 'Both'
-            //   OR Clients_Type__c LIKE :('%' + clientType + '%'))
             ORDER BY Delivery_Price__c ASC
         ];
 
@@ -130,10 +123,8 @@ public with sharing class TransporterSelector {
         }
 
         // Ajout des autres transporteurs
-        // for (TransporterRate__c rate : rates) {
             for (TransporterRate__c rate : filteredRates) {
                 if (!addedIds.contains(rate.Id)) {
-                // options.add(new TransporterOption(rate.Transporter__r != null ? rate.Transporter__r.Name : 'UnknownTransporter', rate));
                 options.add(new TransporterOption(rate.Id, rate));
             }
         }
