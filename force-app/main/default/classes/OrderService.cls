@@ -1,5 +1,3 @@
-// Ici, on ajoute un paramètre pour savoir si on est en before insert ou before update. La validation sur les OrderItem sera faite uniquement en before update, car en before insert les OrderItem ne sont pas encore créés.
-
 public class OrderService {
     public static void validateOrder(Order orderToValidate, Boolean isBeforeInsert, String statut) {
         if (orderToValidate.AccountId == null) return; // Utilisation du trigger ici et de la méthode orderToValidate
