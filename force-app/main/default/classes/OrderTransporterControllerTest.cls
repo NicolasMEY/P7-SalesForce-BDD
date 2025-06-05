@@ -1,7 +1,8 @@
 @isTest
 private class OrderTransporterControllerTest {
-    @isTest
-    static void testSaveTransporterChoice_success() {
+
+    @testSetup
+    static void setup() {
         // Création d’un compte avec le type de client défini
         Account acc = new Account(Name = 'Test Account', Type_of_client__c = 'Particulier');
         insert acc;
@@ -27,6 +28,14 @@ private class OrderTransporterControllerTest {
             ShippingCountry = 'France'
         );
         insert ord;
+    }
+
+    @isTest
+    static void testSaveTransporterChoice_success() {
+        // Récupération des données créées en setup
+        Account acc = [SELECT Id FROM Account WHERE Name = 'Test Account' LIMIT 1];
+        Order ord = [SELECT Id FROM Order WHERE AccountId = :acc.Id AND Status = 'Draft' LIMIT 1];
+        Transporter__c transporter = [SELECT Id, Name FROM Transporter__c WHERE Name = 'Chronopost' LIMIT 1];
 
         Test.startTest();
         // Récupération des options de transporteur
