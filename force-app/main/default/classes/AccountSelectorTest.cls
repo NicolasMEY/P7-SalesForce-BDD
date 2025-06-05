@@ -1,11 +1,12 @@
 @isTest
 private class AccountSelectorTest {
 
-    @isTest
-    static void testGetAccountById_returnsAccount() {
+    static Account testAccount;
 
+    @testSetup
+    static void setup() {
         // Créer un compte fictif
-        Account acc = new Account(
+        testAccount = new Account(
             Name = 'Test Account',
             Type = 'Prospect',
             Industry = 'Technology',
@@ -15,7 +16,14 @@ private class AccountSelectorTest {
             Website = 'www.test.com',
             Type_of_client__c = 'Professionnel'
         );
-        insert acc;
+        insert testAccount;
+    }
+
+    @isTest
+    static void testGetAccountById_returnsAccount() {
+
+        // Récupérer le compte fictif via requête
+        Account acc = [SELECT Id, Name FROM Account WHERE Name = 'Test Account' LIMIT 1];
 
         // Appeler la méthode à tester
         Account result = AccountSelector.getAccountById(acc.Id);
