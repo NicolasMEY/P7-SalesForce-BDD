@@ -1,6 +1,8 @@
 @isTest
 private class TransporterSelectorTest {
-    @isTest static void testGetTransportOptions_withValidOrder() {
+
+    @testSetup
+    static void setup() {
         Account acc = new Account(Name = 'Test Account', Type_of_client__c = 'Professionnel');
         insert acc;
 
@@ -13,20 +15,16 @@ private class TransporterSelectorTest {
         insert ord;
 
         Transporter__c transporter1 = new Transporter__c(Name = 'Chronopost');
-        insert transporter1;
-
         Transporter__c transporter2 = new Transporter__c(Name = 'DHL');
-        insert transporter2;
+        insert new List<Transporter__c>{ transporter1, transporter2 };
 
         TransporterRate__c rate1 = new TransporterRate__c(
             Transporter__c = transporter1.Id,
             Delivery_Price__c = 10.50,
             Delivery_Time__c = 48,
             Country__c = 'France',
-            Clients_Type__c = 'Professionnel' // Valeur compatible avec acc.Type_of_client__c
+            Clients_Type__c = 'Professionnel' // Compatible avec acc.Type_of_client__c
         );
-        insert rate1;
-
         TransporterRate__c rate2 = new TransporterRate__c(
             Transporter__c = transporter2.Id,
             Delivery_Price__c = 20.00,
@@ -34,7 +32,12 @@ private class TransporterSelectorTest {
             Country__c = 'France',
             Clients_Type__c = 'Both'
         );
-        insert rate2;
+        insert new List<TransporterRate__c>{ rate1, rate2 };
+    }
+
+    @isTest
+    static void testGetTransportOptions_withValidOrder() {
+        Order ord = [SELECT Id FROM Order WHERE Status = 'Draft' LIMIT 1];
 
         Test.startTest();
         List<TransporterSelector.TransporterOption> options = TransporterSelector.getTransportOptions(ord.Id);
@@ -62,12 +65,14 @@ private class TransporterSelectorTest {
         System.assert(hasFastest, 'Doit contenir une option "fastest"');
     }
 
-    @isTest static void testGetTransportOptions_withNullOrderId() {
+    @isTest
+    static void testGetTransportOptions_withNullOrderId() {
         List<TransporterSelector.TransporterOption> options = TransporterSelector.getTransportOptions(null);
         System.assertEquals(0, options.size());
     }
 
-    @isTest static void testGetTransportOptions_withInvalidOrderId() {
+    @isTest
+    static void testGetTransportOptions_withInvalidOrderId() {
         Id fakeId = '801000000000000AAA';
         List<TransporterSelector.TransporterOption> options = TransporterSelector.getTransportOptions(fakeId);
         System.assertEquals(0, options.size());
