@@ -1,7 +1,8 @@
 @isTest
 private class OrderServiceTest {
-    @isTest
-    static void testValidateOrder_particulierNotEnoughItems() {
+
+    @testSetup
+    static void setup() {
         // Crée un compte particulier
         Account acc = new Account(Name = 'Compte Test', Type_of_client__c = 'Particulier');
         insert acc;
@@ -32,6 +33,14 @@ private class OrderServiceTest {
         OrderItem item1 = new OrderItem(OrderId = ord.Id, Quantity = 1, UnitPrice = 10, PricebookEntryId = pbe.Id);
         OrderItem item2 = new OrderItem(OrderId = ord.Id, Quantity = 1, UnitPrice = 10, PricebookEntryId = pbe.Id);
         insert new List<OrderItem>{ item1, item2 };
+    }
+
+    @isTest
+    static void testValidateOrder_particulierNotEnoughItems() {
+        // Requête pour récupérer les données créées en setup
+        Account acc = [SELECT Id FROM Account WHERE Name = 'Compte Test' LIMIT 1];
+        Id pricebookId = Test.getStandardPricebookId();
+        Order ord = [SELECT Id, Status FROM Order WHERE AccountId = :acc.Id AND Status = 'Draft' LIMIT 1];
 
         // Changer le statut à 'Activated' pour déclencher le trigger
         ord.Status = 'Activated';
