@@ -1,6 +1,8 @@
 @isTest
 private class DeliveryServiceTest {
-    @isTest static void testNoRate() {
+
+    @testSetup
+    static void setup() {
         // Crée un compte simple
         Account transporter = new Account(Name = 'Test Transporter', Type_of_client__c = 'Professionnel');
         insert transporter;
@@ -10,9 +12,14 @@ private class DeliveryServiceTest {
             AccountId = transporter.Id,
             EffectiveDate = Date.today(),
             Status = 'Draft'
-            // Si besoin : Transporter__c = transporter.Id
         );
         insert order;
+    }
+
+    @isTest
+    static void testNoRate() {
+        // Requête SOQL incluant Transporter__c (même si null)
+        Order order = [SELECT Id, Transporter__c FROM Order WHERE Status = 'Draft' LIMIT 1];
 
         Test.startTest();
         DeliveryService.createDeliveryForOrder(order);
