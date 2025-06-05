@@ -1,6 +1,9 @@
-trigger OrderTrigger on Order (before insert, before update) {
-    // TODO: Verifier érifier si la commande répond aux critères
-    //  de validation. Cette méthode doit s'assurer que le nombre minimum de produits est respecté en fonction du type
-    //  de client (Particulier ou Professionnel).
-    //  TODO: Selectionner le meilleur transporteur selon le choix fait sur la commande
+// Avant l'insertion (before insert) et avant la mise à jour (before update) d’un enregistrement Order, pour valider les données avant qu'elles ne soient sauvegardées en base.
+
+trigger OrderTrigger on Order ( before update) {
+    Boolean isBeforeInsert = Trigger.isInsert && Trigger.isBefore;
+    
+    for (Order ord : Trigger.new) {
+        OrderService.validateOrder(ord, isBeforeInsert, ord.status); // Appel de la méthode validateOrder de la class OrderService
+    }
 }
